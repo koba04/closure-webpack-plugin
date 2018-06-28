@@ -81,19 +81,6 @@ class GoogRequireParserPlugin {
         this.addGoogDependency(parser, this.basePath);
       }
 
-      // For goog.provide calls, add loader code and exit
-      if (expr.callee.property.name === 'provide') {
-        if (
-          this.options.mode === 'NONE' &&
-          !parser.state.current.dependencies.find(
-            (dep) => dep instanceof GoogLoaderPrefixDependency
-          )
-        ) {
-          this.addLoaderDependency(parser, false);
-        }
-        return false;
-      }
-
       try {
         const param = expr.arguments[0].value;
         const modulePath = this.googPathsByNamespace.get(param);
@@ -107,6 +94,20 @@ class GoogRequireParserPlugin {
       } catch (e) {
         parser.state.compilation.errors.push(e);
       }
+
+      // For goog.provide calls, add loader code and exit
+      if (expr.callee.property.name === 'provide') {
+        if (
+          this.options.mode === 'NONE' &&
+          !parser.state.current.dependencies.find(
+            (dep) => dep instanceof GoogLoaderPrefixDependency
+          )
+        ) {
+          this.addLoaderDependency(parser, false);
+        }
+        return false;
+      }
+
       return false;
     });
 
