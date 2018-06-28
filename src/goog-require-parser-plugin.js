@@ -124,13 +124,13 @@ class GoogRequireParserPlugin {
             'window.goog = window.goog || {}',
             []
           );
-          parser.state.current.contextArgument = function() {
+          parser.state.current.generator.contextArgument = function() {
             return 'window';
           };
           const {
             variableInjectionFunctionWrapperEndCode,
-          } = parser.state.current;
-          parser.state.current.variableInjectionFunctionWrapperEndCode = function(
+          } = parser.state.current.generator;
+          parser.state.current.generator.variableInjectionFunctionWrapperEndCode = function(
             varExpressions,
             block
           ) {
