@@ -89,131 +89,139 @@ class ClosureCompilerPlugin {
   apply(compiler) {
     this.requestShortener = new RequestShortener(compiler.context);
 
-    compiler.plugin('compilation', (compilation, params) => {
-      const runFullCompilation =
-        !compilation.compiler.parentCompilation ||
-        this.options.childCompilations(compilation);
+    compiler.hooks.compilation.tap(
+      'ClosureWebpackPlugin',
+      (compilation, params) => {
+        const runFullCompilation =
+          !compilation.compiler.parentCompilation ||
+          this.options.childCompilations(compilation);
 
-      if (
-        this.options.closureLibraryBase &&
-        (this.options.deps || this.options.extraDeps)
-      ) {
-        const parserPluginOptions = Object.assign({}, this.options, {
-          mode: runFullCompilation ? this.options.mode : 'NONE',
-        });
-
-        const { normalModuleFactory } = params;
-        normalModuleFactory.plugin('parser', (parser) => {
-          parser.apply(new GoogRequireParserPlugin(parserPluginOptions));
-        });
-        compilation.dependencyFactories.set(
-          GoogDependency,
-          params.normalModuleFactory
-        );
-        compilation.dependencyTemplates.set(
-          GoogDependency,
-          new GoogDependency.Template()
-        );
-        compilation.dependencyFactories.set(
-          GoogLoaderPrefixDependency,
-          params.normalModuleFactory
-        );
-        compilation.dependencyTemplates.set(
-          GoogLoaderPrefixDependency,
-          new GoogLoaderPrefixDependency.Template()
-        );
-        compilation.dependencyFactories.set(
-          GoogLoaderSuffixDependency,
-          params.normalModuleFactory
-        );
-        compilation.dependencyTemplates.set(
-          GoogLoaderSuffixDependency,
-          new GoogLoaderSuffixDependency.Template()
-        );
-        compilation.dependencyFactories.set(
-          GoogLoaderEs6PrefixDependency,
-          new NullFactory()
-        );
-        compilation.dependencyTemplates.set(
-          GoogLoaderEs6PrefixDependency,
-          new GoogLoaderEs6PrefixDependency.Template()
-        );
-        compilation.dependencyFactories.set(
-          GoogLoaderEs6SuffixDependency,
-          new NullFactory()
-        );
-        compilation.dependencyTemplates.set(
-          GoogLoaderEs6SuffixDependency,
-          new GoogLoaderEs6SuffixDependency.Template()
-        );
-      }
-
-      if (!runFullCompilation) {
-        return;
-      }
-
-      if (this.options.mode === 'AGGRESSIVE_BUNDLE') {
-        // It's very difficult to override a specific dependency template without rewriting the entire set.
-        // Microtask timing is used to ensure that these overrides occur after the main template plugins run.
-        Promise.resolve().then(() => {
-          compilation.dependencyTemplates.forEach((val, key) => {
-            switch (key.name) {
-              case 'AMDDefineDependency':
-                compilation.dependencyTemplates.set(
-                  key,
-                  new AMDDefineDependencyTemplate()
-                );
-                break;
-
-              case 'HarmonyCompatibilityDependency':
-              case 'HarmonyExportExpressionDependency':
-              case 'HarmonyExportHeaderDependency':
-              case 'HarmonyExportImportedSpecifierDependency':
-              case 'HarmonyExportSpecifierDependency':
-                compilation.dependencyTemplates.set(
-                  key,
-                  new HarmonyNoopTemplate()
-                );
-                break;
-
-              case 'ImportDependency':
-                compilation.dependencyTemplates.set(
-                  key,
-                  new ImportDependencyTemplate()
-                );
-                break;
-
-              case 'HarmonyImportDependency':
-                compilation.dependencyTemplates.set(
-                  key,
-                  new HarmonyImportDependencyTemplate()
-                );
-                break;
-
-              case 'HarmonyImportSpecifierDependency':
-                compilation.dependencyTemplates.set(
-                  key,
-                  new HarmonyImportSpecifierDependencyTemplate()
-                );
-                break;
-
-              default:
-                break;
-            }
+        if (
+          this.options.closureLibraryBase &&
+          (this.options.deps || this.options.extraDeps)
+        ) {
+          const parserPluginOptions = Object.assign({}, this.options, {
+            mode: runFullCompilation ? this.options.mode : 'NONE',
           });
-        });
-      }
 
-      compilation.plugin('optimize-chunk-assets', (originalChunks, cb) => {
-        if (this.options.mode === 'AGGRESSIVE_BUNDLE') {
-          this.aggressiveBundle(compilation, originalChunks, cb);
-        } else if (this.options.mode === 'NONE') {
-          cb();
-        } else {
-          this.standardBundle(compilation, originalChunks, cb);
+          compiler.hooks.normalModuleFactory.tap(
+            'ClosureWebpackPlugin',
+            (parser) => {
+              parser.apply(new GoogRequireParserPlugin(parserPluginOptions));
+            }
+          );
+          compilation.dependencyFactories.set(
+            GoogDependency,
+            params.normalModuleFactory
+          );
+          compilation.dependencyTemplates.set(
+            GoogDependency,
+            new GoogDependency.Template()
+          );
+          compilation.dependencyFactories.set(
+            GoogLoaderPrefixDependency,
+            params.normalModuleFactory
+          );
+          compilation.dependencyTemplates.set(
+            GoogLoaderPrefixDependency,
+            new GoogLoaderPrefixDependency.Template()
+          );
+          compilation.dependencyFactories.set(
+            GoogLoaderSuffixDependency,
+            params.normalModuleFactory
+          );
+          compilation.dependencyTemplates.set(
+            GoogLoaderSuffixDependency,
+            new GoogLoaderSuffixDependency.Template()
+          );
+          compilation.dependencyFactories.set(
+            GoogLoaderEs6PrefixDependency,
+            new NullFactory()
+          );
+          compilation.dependencyTemplates.set(
+            GoogLoaderEs6PrefixDependency,
+            new GoogLoaderEs6PrefixDependency.Template()
+          );
+          compilation.dependencyFactories.set(
+            GoogLoaderEs6SuffixDependency,
+            new NullFactory()
+          );
+          compilation.dependencyTemplates.set(
+            GoogLoaderEs6SuffixDependency,
+            new GoogLoaderEs6SuffixDependency.Template()
+          );
         }
-      });
-    });
+
+        if (!runFullCompilation) {
+          return;
+        }
+
+        if (this.options.mode === 'AGGRESSIVE_BUNDLE') {
+          // It's very difficult to override a specific dependency template without rewriting the entire set.
+          // Microtask timing is used to ensure that these overrides occur after the main template plugins run.
+          Promise.resolve().then(() => {
+            compilation.dependencyTemplates.forEach((val, key) => {
+              switch (key.name) {
+                case 'AMDDefineDependency':
+                  compilation.dependencyTemplates.set(
+                    key,
+                    new AMDDefineDependencyTemplate()
+                  );
+                  break;
+
+                case 'HarmonyCompatibilityDependency':
+                case 'HarmonyExportExpressionDependency':
+                case 'HarmonyExportHeaderDependency':
+                case 'HarmonyExportImportedSpecifierDependency':
+                case 'HarmonyExportSpecifierDependency':
+                  compilation.dependencyTemplates.set(
+                    key,
+                    new HarmonyNoopTemplate()
+                  );
+                  break;
+
+                case 'ImportDependency':
+                  compilation.dependencyTemplates.set(
+                    key,
+                    new ImportDependencyTemplate()
+                  );
+                  break;
+
+                case 'HarmonyImportDependency':
+                  compilation.dependencyTemplates.set(
+                    key,
+                    new HarmonyImportDependencyTemplate()
+                  );
+                  break;
+
+                case 'HarmonyImportSpecifierDependency':
+                  compilation.dependencyTemplates.set(
+                    key,
+                    new HarmonyImportSpecifierDependencyTemplate()
+                  );
+                  break;
+
+                default:
+                  break;
+              }
+            });
+          });
+        }
+
+        compilation.hooks.optimizeChunkAssets.tapAsync(
+          'ClosureWebpackPlugin',
+          (originalChunks, cb) => {
+            if (this.options.mode === 'AGGRESSIVE_BUNDLE') {
+              this.aggressiveBundle(compilation, originalChunks, cb);
+            } else if (this.options.mode === 'NONE') {
+              cb();
+            } else {
+              this.standardBundle(compilation, originalChunks, cb);
+            }
+          }
+        );
+      }
+    );
   }
 
   standardBundle(compilation, originalChunks, cb) {
